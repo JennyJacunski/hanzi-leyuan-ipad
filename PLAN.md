@@ -12,8 +12,10 @@
 - [x] 发布前检查：`docs/` 里没有老师数据
 - [x] 自动检查 17 项通过（WebKit 26，iPad 横屏 / 竖屏、触屏、离线）
 
+- [x] 发布到 GitHub Pages：https://jennyjacunski.github.io/hanzi-leyuan-ipad/
+      （公开仓库 JennyJacunski/hanzi-leyuan-ipad，提交用 GitHub 的不公开邮箱）；用 WebKit 打开线上网址检查通过
+
 ## 待办
-- [ ] 发布到 GitHub Pages（新建公开仓库，只放 `docs/`）——**需要先问过才做**
 - [ ] 在真 iPad 上：添加到主屏幕、导入数据、朗读、播放 Mac 的录音、老师录音（麦克风）、
       描红页打印 / 存 PDF、断网打开、分享窗口导出
 - [ ] 如果真 iPad 播放不了 webm 录音：在 Mac 上把录音转成 m4a（这台 Mac 有 ffmpeg）

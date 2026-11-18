@@ -57,6 +57,12 @@ dev-data/             测试数据和截图（含老师数据，不进 git）
 .pw-browsers/         检查用的 WebKit 浏览器（不进 git）
 ```
 
+## 发布
+网址：**https://jennyjacunski.github.io/hanzi-leyuan-ipad/**（GitHub Pages，公开仓库
+`JennyJacunski/hanzi-leyuan-ipad`，从 `main` 分支的 `docs/` 发布）。
+更新：`npm run build` → `npm run check` → 提交 → `git push`，GitHub 一分钟左右自动更新网站。
+这个仓库的提交邮箱设成了 GitHub 的不公开地址（只在本仓库的 git 设置里），不要改回私人邮箱。
+
 ## 常用命令
 - `npm run build` —— 生成 `docs/`（桌面版 `app/` 里的文件变了以后要重新 build）
 - `npm run check` —— 自动检查，17 项；截图在 `dev-data/check/`
