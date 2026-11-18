@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>汉字乐园</title>
+<!-- The start-up page. loader.js reads the teacher data, then replaces this page with app.html. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="汉字乐园">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#faf9f5">
+<style>
+  html, body { margin: 0; height: 100%; background: #faf9f5; }
+  body { display: flex; align-items: center; justify-content: center;
+         font-family: -apple-system, "PingFang SC", sans-serif; color: #5a4a3a; font-size: 18px; }
+  #msg { max-width: 30em; padding: 0 16px; text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+<p id="msg">正在打开汉字乐园…</p>
+<script src="store.js"></script>
+<script src="loader.js"></script>
+</body>
+</html>

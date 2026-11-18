@@ -1,0 +1,13 @@
+{
+  "name": "hanzi-leyuan-ipad",
+  "version": "1.0.0",
+  "description": "汉字乐园 iPad 版：从桌面版生成的网页应用（添加到主屏幕使用）",
+  "private": true,
+  "scripts": {
+    "build": "node tools/build.js",
+    "check": "PLAYWRIGHT_BROWSERS_PATH=.pw-browsers node tools/check.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
