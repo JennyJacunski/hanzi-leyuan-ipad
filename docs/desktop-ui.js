@@ -62,9 +62,11 @@
   /* ---- 1. folding the teacher tools ---------------------------------------- */
   // Which teacher tab fits which page.
   var TAB_FOR_VIEW = { learn: 'edit', test: 'quizvoice', stories: 'stories', lessons: 'lessons', write: 'write', search: 'edit' };
+  // The view on screen, not the top-bar button: since 1.2.4 the 学习 button
+  // can show #view-write (每周生字, see learn-page.js).
   function currentView() {
-    var b = document.querySelector('.tabbar button.active');
-    return b ? b.dataset.tab : 'learn';
+    var v = document.querySelector('.view.active');
+    return v ? v.id.replace(/^view-/, '') : 'learn';
   }
   function panel() { return el('teacher-panel'); }
   function isFolded() { return panel().classList.contains('folded'); }

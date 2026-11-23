@@ -13,6 +13,11 @@
  * Available to students and teachers alike. A character with more than one
  * reading (多音字) appears once, with its first reading.
  *
+ * The characters come from a "source": a writing unit (每周生字), or a
+ * teacher's own practice set (自选描红练习, tracing-sets.js), which can add a
+ * note printed on every page and characters that are not in the app's
+ * character list (their pinyin and words then come from the set).
+ *
  * Opened in a normal browser (no window.desktopApp), this file does nothing.
  */
 (function () {
@@ -21,7 +26,8 @@
   if (!desktop || !Sheet) return;
 
   var MAX_WORDS = 3;          // word examples printed after 组词
-  var currentUnitIdx = null;  // the writing unit that is open
+  var currentSrc = null;      // what the 📝 button on the open page makes pages from
+  var src = null;             // what the window is showing: { chars, heading, note, extra }
   var chars = [];             // the unit's characters, each once
   var chosen = {};            // char -> true when ticked
   var refreshTimer = null;
@@ -30,9 +36,16 @@
      so replacing it lets us note the unit and then run the original. */
   var pageOpenWriteUnit = window.openWriteUnit;
   window.openWriteUnit = function (idx) {
-    currentUnitIdx = idx;
+    currentSrc = unitSource(idx);
     return pageOpenWriteUnit(idx);
   };
+
+  function unitSource(idx) {
+    var unit = (window.OVERLAY.writingUnits || [])[idx];
+    if (!unit) return null;
+    // The unit's name, e.g. "二年级 第二单元 第一周", heads every page with the page number.
+    return { chars: unit.chars || [], heading: unitLabel(unit, idx), note: '', extra: {} };
+  }
 
   function uniqueChars(list) {
     var seen = {}, out = [];
@@ -40,22 +53,27 @@
     return out;
   }
 
-  /* Everything the sheet shows for one character, from the app's data. */
-  function entryFor(ch) {
+  /* Everything the sheet shows for one character, from the app's data.
+     `extra[ch]` = { pinyin, words } for a character a teacher added to a
+     practice set that has no card in the app; without it the pinyin is
+     the page's own automatic reading (pinyin-pro). */
+  function entryFor(ch, extra) {
     var cards = window.getCardsForChar(ch);
     var card = cards.length ? cards[0] : null; // 多音字: the first reading
+    var own = (extra || {})[ch] || null;
     var strokeData = window.getStrokeData(ch);
     var info = (window.CHAR_INFO || {})[ch];
+    var words = card ? (card.words || []).map(function (w) { return w[0]; }) : (own && own.words) || [];
     return {
       char: ch,
-      pinyin: card ? card.pinyin : '',
-      words: card ? (card.words || []).slice(0, MAX_WORDS).map(function (w) { return w[0]; }) : [],
+      pinyin: card ? card.pinyin : (own && own.pinyin) || window.autoPinyin(ch) || '',
+      words: words.slice(0, MAX_WORDS),
       strokes: strokeData && strokeData.strokes ? strokeData.strokes : [],
       radical: info ? info[0] : '',
       structure: info ? (window.CHAR_INFO_STRUCTURES || [])[info[1]] || '' : '',
     };
   }
-  function entriesFor(list) { return uniqueChars(list).map(entryFor); }
+  function entriesFor(list, extra) { return uniqueChars(list).map(function (ch) { return entryFor(ch, extra); }); }
 
   function chosenChars() { return chars.filter(function (ch) { return chosen[ch]; }); }
 
@@ -157,9 +175,7 @@
       setStatus('');
       return;
     }
-    // The unit's name, e.g. "二年级 第二单元 第一周", heads every page with the page number.
-    var unit = (window.OVERLAY.writingUnits || [])[currentUnitIdx] || {};
-    lastResult = Sheet.buildPages(picked.map(entryFor), { heading: unitLabel(unit, currentUnitIdx) });
+    lastResult = Sheet.buildPages(entriesFor(picked, src.extra), { heading: src.heading || '', note: src.note || '' });
     el('tracing-preview').innerHTML = lastResult.pages.join('');
     setStatus(lastResult.notes.join('\n'), lastResult.notes.length > 0);
   }
@@ -169,16 +185,15 @@
     return ((parts && parts.label ? parts.label + ' ' : '') + (unit.title || '')).trim();
   }
 
-  function open(idx) {
-    var units = window.OVERLAY.writingUnits || [];
-    var unit = units[idx];
-    if (!unit) return;
+  /* `source`: { chars, heading, note, extra } — see unitSource and tracing-sets.js. */
+  function open(source) {
+    if (!source) return;
     if (!overlay) build();
-    currentUnitIdx = idx;
-    chars = uniqueChars(unit.chars);
+    src = source;
+    chars = uniqueChars(source.chars);
     chosen = {};
     chars.forEach(function (ch) { chosen[ch] = true; });
-    el('tracing-unit-name').textContent = unitLabel(unit, idx);
+    el('tracing-unit-name').textContent = source.heading || '';
     renderChips();
     refresh();
     overlay.classList.add('active');
@@ -200,8 +215,7 @@
     return lastResult.pages.map(function (svg) { return '<div class="pg">' + svg + '</div>'; }).join('');
   }
   function fileName() {
-    var unit = (window.OVERLAY.writingUnits || [])[currentUnitIdx] || {};
-    var label = unitLabel(unit, currentUnitIdx).replace(/[\\/:*?"<>|\s]+/g, '_');
+    var label = String(src.heading || '').replace(/[\\/:*?"<>|\s]+/g, '_');
     return '描红练习' + (label ? '_' + label : '') + '.pdf';
   }
   async function savePdf() {
@@ -234,10 +248,17 @@
     btn.type = 'button';
     btn.textContent = '📝 生成描红练习';
     btn.style.marginLeft = '8px';
-    btn.addEventListener('click', function () { if (currentUnitIdx !== null) open(currentUnitIdx); });
+    btn.addEventListener('click', function () { open(currentSrc); });
     back.insertAdjacentElement('afterend', btn);
   });
 
   // For the automatic check and for trying things out in the console.
-  window.TracingUI = { open: open, close: close, entriesFor: entriesFor };
+  window.TracingUI = {
+    // open(source), or open(unit index) as before
+    open: function (s) { return open(typeof s === 'number' ? unitSource(s) : s); },
+    close: close,
+    entriesFor: entriesFor,
+    // tracing-sets.js: an opened practice set is what the 📝 button makes pages from
+    setCurrent: function (s) { currentSrc = s; },
+  };
 })();

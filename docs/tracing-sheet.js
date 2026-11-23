@@ -30,6 +30,8 @@
  * Use:
  *   var result = TracingSheet.buildPages(entries, { heading: '二年级 第二单元 第一周' });
  *   (leave out the options for the page number at the bottom and no heading)
+ *   options.note: a teacher's note (自选描红练习), printed on every page under
+ *   日期 / 姓名; the character blocks get a little lower to make room
  *   result.pages   -> one SVG string per page
  *   result.notes   -> what was missing, e.g. "「拔」缺少：笔顺（对应处留空）"
  * where each entry is
@@ -41,6 +43,10 @@
   var PAGE_W = 185, PAGE_H = 260;
   var MARGIN = 10;
   var HEADER = 14;            // the 日期 / 姓名 line at the top
+  var NOTE_SIZE = 3.6;        // the teacher's note under it (自选描红练习), font size …
+  var NOTE_MIN_SIZE = 3.0;    // … made smaller down to this before it takes a second line
+  var NOTE_LINE = 5.2;        // height of one note line
+  var NOTE_MAX_LINES = 2;
   var STRIP = 9;              // the 组词 / 造句 strip at the bottom of each block
   var LEFT_COL_MIN = 30;      // pinyin, big character, 笔画 / 结构 / 部首; it also takes
                               // the few millimetres the grid's whole cells leave over
@@ -65,6 +71,7 @@
   var PINYIN_GRID = 'rgb(75,75,75)';  // the pinyin over the grid: dark, but lighter than the reading
   var PINYIN_BOLD = 0.045;            // outline added round each letter, as a share of the font size
   var PINYIN_X_FILL = 0.92;           // a letter's x-height fills this share of the middle space
+  var PINYIN_MAX_WIDTH = 0.82;        // a syllable is at most this share of a cell wide
 
   /* 楷体 for labels: the Mac's Kaiti SC first, then the Windows 楷体, then
      whatever serif font the system has. */
@@ -100,9 +107,11 @@
     var pages = Math.ceil(count / PER_PAGE);
     return [pages, pages * PER_PAGE - count];
   }
-  function blockRects() {
-    var h = (PAGE_H - 2 * MARGIN - HEADER) / PER_PAGE;
-    var top = MARGIN + HEADER, out = [];
+  /* The three character blocks; `noteH` is the room taken by a teacher's note (0 without one). */
+  function blockRects(noteH) {
+    noteH = noteH || 0;
+    var h = (PAGE_H - 2 * MARGIN - HEADER - noteH) / PER_PAGE;
+    var top = MARGIN + HEADER + noteH, out = [];
     for (var i = 0; i < PER_PAGE; i++) out.push({ x: MARGIN, y: top + i * h, w: PAGE_W - 2 * MARGIN, h: h });
     return out;
   }
@@ -321,7 +330,8 @@
     // The pinyin, the same size in the left column and over the grid.
     var pyLeft = null, pyGrid = null;
     if (pinyin) {
-      var pySize = pinyinSizeFor(bandH);
+      // Long syllables (zhuàng, chuáng) are made a little smaller so they stay inside one cell.
+      var pySize = Math.min(pinyinSizeFor(bandH), cell * PINYIN_MAX_WIDTH / pinyinMetrics().advance(pinyin));
       pyLeft = pinyinGroup(id + 'pl', pinyin, pySize, PINYIN_LEFT);
       pyGrid = pinyinGroup(id + 'pg', pinyin, pySize, PINYIN_GRID);
       defs.push(pyLeft.def, pyGrid.def);
@@ -412,6 +422,34 @@
     return out.join('');
   }
 
+  /* The teacher's note: one line, made a little smaller if needed, or else
+     broken into two lines; text that still does not fit ends with "…". */
+  function layoutNote(textIn) {
+    var str = textIn.replace(/\s+/g, ' ').trim();
+    if (!str) return null;
+    var m = getMetrics(), maxW = PAGE_W - 2 * MARGIN;
+    var size = NOTE_SIZE;
+    while (m.advance(str) * size > maxW && size > NOTE_MIN_SIZE) size = Math.max(NOTE_MIN_SIZE, size * 0.95);
+    var lines = [], cur = '';
+    Array.from(str).forEach(function (ch) {
+      if (m.advance(cur + ch) * size > maxW && cur) { lines.push(cur); cur = ch.trim() ? ch : ''; }
+      else cur += ch;
+    });
+    if (cur) lines.push(cur);
+    if (lines.length > NOTE_MAX_LINES) {
+      lines = lines.slice(0, NOTE_MAX_LINES);
+      var last = lines[NOTE_MAX_LINES - 1];
+      while (last && m.advance(last + '…') * size > maxW) last = last.slice(0, -1);
+      lines[NOTE_MAX_LINES - 1] = last + '…';
+    }
+    return { lines: lines, size: size, height: lines.length * NOTE_LINE + 1 };
+  }
+  function drawNote(note) {
+    return note.lines.map(function (l, i) {
+      return text(l, { x: MARGIN, y: MARGIN + HEADER + i * NOTE_LINE, w: PAGE_W - 2 * MARGIN, h: NOTE_LINE }, note.size, INK, 'left');
+    }).join('');
+  }
+
   function pageNumberText(pageNo, total) { return pageNo + ' / ' + total; }
 
   /* The page number, e.g. "1 / 3", centred in the bottom margin under the
@@ -432,9 +470,10 @@
   /* One page (up to three entries) as a complete SVG picture. With a
      heading (even an empty one) the page number goes into the heading line
      at the top; without one it is printed at the bottom. */
-  function drawPage(entries, pageNo, total, heading) {
+  function drawPage(entries, pageNo, total, heading, note) {
     var key = 'ts' + (++renderCount) + 'b';
-    var rects = blockRects(), defs = [], body = [drawHeader()];
+    var rects = blockRects(note ? note.height : 0), defs = [], body = [drawHeader()];
+    if (note) body.push(drawNote(note));
     entries.forEach(function (entry, i) {
       var b = drawBlock(entry, rects[i], key + i);
       defs.push(b.defs);
@@ -452,6 +491,7 @@
      given, is printed at the top of every page with the page number. */
   function buildPages(entries, options) {
     var heading = options ? options.heading : undefined;
+    var note = options && options.note ? layoutNote(String(options.note)) : null;
     var notes = [];
     entries.forEach(function (e) {
       var missing = [];
@@ -461,7 +501,7 @@
     });
     var chunks = chunkPages(entries);
     return {
-      pages: chunks.map(function (page, i) { return drawPage(page, i + 1, chunks.length, heading); }),
+      pages: chunks.map(function (page, i) { return drawPage(page, i + 1, chunks.length, heading, note); }),
       notes: notes,
     };
   }

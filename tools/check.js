@@ -183,10 +183,14 @@ async function run() {
   });
   info('Mac 录的 webm 录音：直接播放 / 解码', audio);
 
-  /* 7. touch: switch to 学写字 and open the first unit */
-  await page.tap('.tabbar button[data-tab="write"]');
-  const writeShown = await page.evaluate(function () { var v = document.getElementById('view-write'); return !!v && getComputedStyle(v).display !== 'none'; });
-  check('用手指点“学写字”能切换', writeShown);
+  /* 7. touch: 学习 opens 每周生字 (the writing units); switch to 全部生字 and back; open the first unit */
+  await page.tap('.tabbar button[data-tab="test"]');
+  await page.tap('.tabbar button[data-tab="learn"]');
+  const weeklyShown = await page.evaluate(function () { var v = document.getElementById('view-write'); return !!v && getComputedStyle(v).display !== 'none'; });
+  await page.tap('#view-write .learn-mode button[data-mode="all"]');
+  const allShown = await page.evaluate(function () { return getComputedStyle(document.getElementById('view-learn')).display !== 'none'; });
+  await page.tap('#view-learn .learn-mode button[data-mode="weekly"]');
+  check('用手指点“学习”打开每周生字，能切换到全部生字再切回来', weeklyShown && allShown);
   await page.evaluate(function () { window.openWriteUnit(0); });
   await page.waitForSelector('#btn-tracing');
   await page.tap('#btn-tracing');

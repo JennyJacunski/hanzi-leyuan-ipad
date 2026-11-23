@@ -146,7 +146,7 @@
   function hasTeacherData() {
     var o = window.OVERLAY || {};
     return !!((o.lessons || []).length || (o.writingUnits || []).length || Object.keys(o.customAudio || {}).length ||
-      (o.storyLinks || []).length || Object.keys(o.charEdits || {}).length);
+      (o.storyLinks || []).length || Object.keys(o.charEdits || {}).length || (o.tracingSets || []).length);
   }
   function showWelcome() {
     var card = document.createElement('div');
