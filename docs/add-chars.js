@@ -10,7 +10,8 @@
  *     checks them, and sees which are new (pinyin, 组词 and a recording can be
  *     set) and which the app already knows (shown, never changed here — that
  *     is 🔧 修改/纠错's job; the old upload silently overwrote them);
- *   ② optionally puts them under a 标签: none, an existing one, or a new one;
+ *   ② optionally puts them under a 标签: none, an existing one, or a new one
+ *     (with an optional note, shown in 偏旁部首归类 — see tag-tools.js);
  *   ③ optionally puts them into a week: grade → unit → week, existing or new.
  *
  * Also owned here:
@@ -103,10 +104,10 @@
       '<div id="ac-table"></div>' +
     '</div>' +
     '<div class="ac-step"><div class="ac-step-title">② 标签（可选）</div>' +
-      '<p class="t-hint">有标签的字，在“学习 → 📚 全部生字”里有自己的按钮，测试时也可以选它出题。</p>' +
+      '<p class="t-hint">每个标签在“学习 → 📚 全部生字 → 偏旁部首归类”里是一类，测试时也可以选它出题。</p>' +
       '<div class="ac-choice"><label><input type="radio" name="ac-tag" value="none" checked> 不加标签</label></div>' +
       '<div class="ac-choice"><label><input type="radio" name="ac-tag" value="old" id="ac-tag-old-radio"> 已有标签</label><select id="ac-tag-select" class="single-group-select"></select></div>' +
-      '<div class="ac-choice"><label><input type="radio" name="ac-tag" value="new"> 新标签</label><input type="text" id="ac-tag-new" placeholder="例如：走字旁的字"></div>' +
+      '<div class="ac-choice"><label><input type="radio" name="ac-tag" value="new"> 新标签</label><input type="text" id="ac-tag-new" placeholder="例如：走字旁的字"><input type="text" id="ac-tag-note" placeholder="注释（可选），例如：走字旁的捺要写长"></div>' +
     '</div>' +
     '<div class="ac-step"><div class="ac-step-title">③ 放进每周生字（可选）</div>' +
       '<p class="t-hint">放进“学习 → 📅 每周生字”的某一周。同一个字不会在同一周里出现两次。</p>' +
@@ -373,10 +374,13 @@
     // ② 标签
     if (tagMode === 'new') {
       var same = (O().groups || []).filter(function (x) { return x.label === tagLabel; })[0];
-      if (same) tagKey = same.key;
-      else {
+      var tagNote = el('ac-tag-note').value.trim();
+      if (same) {
+        tagKey = same.key;
+        if (tagNote && !same.note) same.note = tagNote;
+      } else {
         tagKey = 'custom_' + Date.now();
-        O().groups.push({ key: tagKey, label: tagLabel });
+        O().groups.push(tagNote ? { key: tagKey, label: tagLabel, note: tagNote } : { key: tagKey, label: tagLabel });
       }
     }
     if (tagKey) {
@@ -408,7 +412,7 @@
     msg += parts.join('、');
     if (tagKey) msg += '；标签“' + tagLabel + '”';
     if (weekMode === 'put') msg += '；放进' + grade + ' ' + (unit ? unit + ' ' : '') + week;
-    if (tagMode === 'none' && weekMode === 'none') msg += '（在“全部生字 → 未分类”里）';
+    if (tagMode === 'none' && weekMode === 'none') msg += '（在“全部生字 → 偏旁部首归类 → 未分类”里）';
 
     // refresh every place that shows these
     W.populateGradeSeg();
@@ -421,6 +425,7 @@
     rows = [];
     renderTable();
     el('ac-tag-new').value = '';
+    el('ac-tag-note').value = '';
     el('ac-unit-new').value = '';
     el('ac-week-new').value = '';
     if (tagKey) { setRadio('ac-tag', 'old'); refreshTagSelect(tagKey); } else refreshTagSelect();
@@ -454,7 +459,7 @@
     table.addEventListener('click', onTableClick);
     // using a choice's own control picks that choice
     el('ac-tag-select').addEventListener('change', function () { setRadio('ac-tag', 'old'); });
-    el('ac-tag-new').addEventListener('input', function () { setRadio('ac-tag', 'new'); });
+    ['ac-tag-new', 'ac-tag-note'].forEach(function (id) { el(id).addEventListener('input', function () { setRadio('ac-tag', 'new'); }); });
     el('ac-grade').addEventListener('change', function () { setRadio('ac-week', 'put'); refreshWeekSelects({ grade: el('ac-grade').value }); });
     el('ac-unit').addEventListener('change', function () { setRadio('ac-week', 'put'); refreshWeekSelects({ unit: el('ac-unit').value }); });
     el('ac-week-select').addEventListener('change', function () { setRadio('ac-week', 'put'); refreshWeekSelects({ unit: el('ac-unit').value, week: el('ac-week-select').value }); });
