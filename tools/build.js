@@ -11,7 +11,7 @@
  * Reused from ../desktop_version (unchanged):
  *   app/web-template.html   the page itself, with EMPTY teacher data
  *                           (made by the desktop's tools/prepare-web.js)
- *   app/desktop.js, app/desktop-ui.js, app/learn-page.js   the desktop patches
+ *   app/desktop.js, app/desktop-ui.js, app/learn-page.js, app/add-chars.js   the desktop patches
  *   app/char-info.js, app/tracing-sheet.js, app/tracing-ui.js, app/tracing-sets.js   描红练习
  *   app/fonts/*             title font and pinyin font
  *   build/icon.png          the app icon (1024 px)
@@ -76,7 +76,7 @@ app = replaceOnce(
 app = replaceOnce(
   app,
   '</body></html>',
-  ['store.js', 'ipad-bridge.js', 'desktop.js', 'desktop-ui.js', 'learn-page.js', 'char-info.js', 'tracing-sheet.js', 'tracing-ui.js', 'tracing-sets.js', 'ipad-ui.js']
+  ['store.js', 'ipad-bridge.js', 'desktop.js', 'desktop-ui.js', 'learn-page.js', 'add-chars.js', 'char-info.js', 'tracing-sheet.js', 'tracing-ui.js', 'tracing-sets.js', 'ipad-ui.js']
     .map(function (f) { return '<script src="' + f + '"></script>\n'; }).join('') + '</body></html>',
   '</body></html>'
 );
@@ -87,7 +87,7 @@ fs.mkdirSync(path.join(OUT, 'fonts'), { recursive: true });
 
 fs.writeFileSync(path.join(OUT, 'app.html'), app);
 fs.writeFileSync(path.join(OUT, 'web-template.html'), template); // for 导出数据文件
-['desktop.js', 'desktop-ui.js', 'learn-page.js', 'char-info.js', 'tracing-sheet.js', 'tracing-ui.js', 'tracing-sets.js'].forEach(function (f) {
+['desktop.js', 'desktop-ui.js', 'learn-page.js', 'add-chars.js', 'char-info.js', 'tracing-sheet.js', 'tracing-ui.js', 'tracing-sets.js'].forEach(function (f) {
   fs.copyFileSync(path.join(DESKTOP, 'app', f), path.join(OUT, f));
 });
 fs.readdirSync(path.join(DESKTOP, 'app', 'fonts')).forEach(function (f) {
