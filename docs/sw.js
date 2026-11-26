@@ -12,7 +12,7 @@
  * install the new files the next time the app is opened with internet; the
  * time after that, the new version is what opens.
  */
-var VERSION = "6e7bee25536e";
+var VERSION = "e8d9020d886f";
 var FILES = ["./","add-chars.js","app.html","char-info.js","desktop-ui.js","desktop.js","fonts/DidactGothic-Regular.ttf","fonts/OFL-DidactGothic.txt","fonts/OFL.txt","fonts/ZCOOLKuaiLe-Regular.ttf","icon-180.png","icon-192.png","icon-512.png","index.html","ipad-bridge.js","ipad-ui.js","learn-page.js","loader.js","manifest.webmanifest","radical-table.js","store.js","tag-tools.js","tracing-sets.js","tracing-sheet.js","tracing-ui.js","web-template.html"];
 var APP_CACHE = 'hanzi-app-' + VERSION;
 var STROKE_CACHE = 'hanzi-strokes';

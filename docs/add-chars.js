@@ -19,7 +19,8 @@
  *     week, so a character the teacher added is never impossible to find.
  *     Worked out each time from the data, not stored.
  *   - ✍️ 学写字管理 now only edits an existing week (opened by ✏️ in the
- *     每周生字 list); new weeks are made in ➕ 加字. Its two boxes are labelled
+ *     每周生字 list; since 1.2.9 it has no tab button); new weeks are made in
+ *     ➕ 加字. Its two boxes are labelled
  *     单元 / 周, which is what they hold (the page's own labels had them the
  *     other way round).
  *   - the page's messages that send the teacher to the old tabs now name ➕ 加字.
@@ -92,7 +93,10 @@
     '#ac-table:empty{display:none;}' +
     // ✍️ 学写字管理: only the intro until a week is being edited
     '#t-pane-write:not(.ac-editing) > :not(.ac-write-idle){display:none !important;}' +
-    '#t-pane-write.ac-editing > .ac-write-idle{display:none !important;}';
+    '#t-pane-write.ac-editing > .ac-write-idle{display:none !important;}' +
+    // …and it has no tab of its own (1.2.9): only ✏️ in the 每周生字 list opens it
+    '.t-tab[data-ttab="write"]{display:none !important;}' +
+    '.ac-write-title{margin:0 0 6px;font-size:18px;}';
   document.head.appendChild(style);
 
   /* ---- the tab and its pane ---------------------------------------------- */
@@ -468,6 +472,9 @@
   }
 
   /* ---- ✍️ 学写字管理: editing an existing week only ------------------------- */
+  // Since 1.2.9 the tab button is hidden: ✏️ next to a week in 每周生字 opens
+  // the form, titled with the week; 保存修改 or 取消编辑 folds the teacher
+  // tools again and leaves them on ➕ 加字.
   function setupWritePane() {
     var pane = el('t-pane-write');
     if (!pane || el('ac-write-idle')) return;
@@ -480,6 +487,10 @@
       '<span class="t-status" id="ac-write-idle-status"></span>';
     var intro = pane.querySelector('p.t-hint');
     pane.insertBefore(idle, pane.firstChild);
+    var title = document.createElement('h3');
+    title.className = 'ac-write-title';
+    title.id = 'ac-write-title';
+    idle.insertAdjacentElement('afterend', title);
     if (intro) intro.textContent = '修改这一周：可以改年级、单元和周的名称，点一下字把它移出这一周，或者再加字库里已有的字（新字请用“➕ 加字”）。';
     var unitInput = el('write-index-input'), weekInput = el('write-title-input');
     if (unitInput) unitInput.placeholder = '单元，例如：第一单元';
@@ -492,16 +503,29 @@
       // the unit box shows just the unit; the grade has its own menu
       var u = O().writingUnits[idx];
       if (u && unitInput) unitInput.value = W.writeUnitGroupLabel(u) || '';
+      if (u) title.textContent = '修改：' + [W.writeUnitGrade(u), W.writeUnitGroupLabel(u), u.title].filter(Boolean).join(' ');
       return r;
     };
-    var pageReset = W.resetWriteUnitForm;
-    W.resetWriteUnitForm = function () {
-      var r = pageReset.apply(this, arguments);
+    function closeForm() {
+      var wasEditing = pane.classList.contains('ac-editing');
       pane.classList.remove('ac-editing');
       var s = el('write-status');
       el('ac-write-idle-status').textContent = s ? s.textContent : '';
+      if (wasEditing && pane.classList.contains('active')) {
+        W.switchToTeacherTab('addchars');
+        var panel = el('teacher-panel'), fold = el('teacher-fold-btn');
+        if (panel && fold && !panel.classList.contains('folded')) fold.click();
+      }
+    }
+    var pageReset = W.resetWriteUnitForm;
+    W.resetWriteUnitForm = function () {
+      var r = pageReset.apply(this, arguments);
+      closeForm();
       return r;
     };
+    // 取消编辑 calls the page's own function directly, not the one above
+    var cancel = el('btn-cancel-edit-write-unit');
+    if (cancel) cancel.addEventListener('click', closeForm);
   }
   // Saving an edited week: the unit box holds only the unit, so the grade is
   // put back in front of it, the way the weeks are stored ('二年级 第一单元').
