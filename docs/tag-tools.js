@@ -3,7 +3,10 @@
  * tag-tools.js — the teacher's 标签 on 学习 → 📚 全部生字 (decided 2026-11-23).
  *
  * The grade row shows only 一年级…四年级 and one button, “偏旁部首归类”, that
- * holds every teacher tag (and “未分类”, see add-chars.js). It opens:
+ * holds every teacher tag (and “未分类”, see add-chars.js). Its overview has
+ * two parts, switched at the top: 📖 偏旁总表 (drawn by radical-table.js,
+ * the default) and 🏷 老师的标签 (below). With no tags, only the 偏旁总表.
+ * The tags part opens:
  *
  *   the overview   one card per tag (here called a 类): its 偏旁 in large
  *                  type, name, number of characters, the first few, and the
@@ -44,6 +47,7 @@
   var RADICALS = '__radicals__';
   var GRADE_KEYS = ['g1', 'g2', 'g3', 'g4'];
   var VIEW_KEY = 'hanzi_radical_view';
+  var TOP_KEY = 'hanzi_radical_top';
   var HAN = /[㐀-䶿一-鿿豈-﫿⺀-⿕]/;
 
   function el(id) { return document.getElementById(id); }
@@ -55,6 +59,12 @@
 
   var view = 'radical';
   try { if (localStorage.getItem(VIEW_KEY) === 'name') view = 'name'; } catch (e) { /* storage unavailable */ }
+  // 📖 偏旁总表 (radical-table.js) or 🏷 老师的标签
+  var top = 'table';
+  try { if (localStorage.getItem(TOP_KEY) === 'tags') top = 'tags'; } catch (e) { /* storage unavailable */ }
+  function RT() { return W.RadicalTable || null; }
+  function showTable() { return !!RT() && (top === 'table' || !sections().length); }
+  function anything() { return sections().length > 0 || (!!RT() && RT().hasAny()); }
 
   /* ---- styles --------------------------------------------------------------- */
   var style = document.createElement('style');
@@ -90,7 +100,8 @@
     '.tag-edit .t-row label{display:flex;align-items:center;gap:8px;flex:1;min-width:220px;font-size:14px;}' +
     '.tag-edit input[type="text"]{flex:1;padding:8px 10px;border-radius:9px;border:1px solid var(--line);font-size:14px;background:var(--panel);color:var(--ink);}' +
     '.tag-section-foot{display:flex;gap:10px;margin:16px 0 4px;}' +
-    '#tag-next{margin-left:auto;}';
+    '#tag-next{margin-left:auto;}' +
+    '.rg-head #rt-edit-open{margin-left:auto;}';
   document.head.appendChild(style);
 
   /* ---- the 类 ------------------------------------------------------------------ */
@@ -143,7 +154,9 @@
     if (!key || key === RADICALS || GRADE_KEYS.indexOf(key) >= 0) return null;
     return findSection(key);
   }
-  function inRadicals() { return W.learnState.group === RADICALS || !!currentTag(); }
+  function inRadicals() {
+    return W.learnState.group === RADICALS || !!currentTag() || (!!RT() && RT().isPage(W.learnState.group));
+  }
 
   /* ---- the grade row ---------------------------------------------------------- */
   var pagePopulateGradeSeg = W.populateGradeSeg;
@@ -154,7 +167,7 @@
     seg.querySelectorAll('button[data-group]').forEach(function (b) {
       if (GRADE_KEYS.indexOf(b.dataset.group) < 0) b.remove();
     });
-    if (sections().length) {
+    if (anything()) {
       var btn = document.createElement('button');
       btn.dataset.group = RADICALS;
       btn.textContent = '偏旁部首归类';
@@ -178,9 +191,22 @@
   function preview(sec) { return sec.chars.filter(hasCard).slice(0, 12).join(''); }
   function countText(sec) { return sec.chars.filter(hasCard).length + ' 个字'; }
 
+  function topSwitchHtml() {
+    if (!RT() || !sections().length) return '';
+    return '<div class="seg rg-top">' +
+      '<button type="button" data-rgtop="table" class="' + (top === 'table' ? 'active' : '') + '">📖 偏旁总表</button>' +
+      '<button type="button" data-rgtop="tags" class="' + (top === 'tags' ? 'active' : '') + '">🏷 老师的标签</button></div>';
+  }
+
   function overviewHtml() {
+    if (showTable()) {
+      var editingTable = RT().isEditing() && W.teacherMode;
+      return '<div class="rg-overview" id="rg-overview">' +
+        (editingTable ? '' : '<div class="rg-head">' + topSwitchHtml() + '<span class="t-hint">点一个偏旁，看字库里带这个偏旁的全部字</span>' + RT().headButtonsHtml() + '</div>') +
+        RT().overviewHtml() + '</div>';
+    }
     var list = ordered();
-    var head = '<div class="rg-head"><div class="seg rg-view">' +
+    var head = '<div class="rg-head">' + topSwitchHtml() + '<div class="seg rg-view">' +
         '<button type="button" data-rgview="radical" class="' + (view === 'radical' ? 'active' : '') + '">按偏旁部首</button>' +
         '<button type="button" data-rgview="name" class="' + (view === 'name' ? 'active' : '') + '">按名称和注释</button>' +
       '</div><span class="t-hint">点一类，看这一类的全部字</span></div>';
@@ -248,6 +274,13 @@
     });
     // the overview's own buttons live inside the grid
     grid.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-rgtop]');
+      if (t) {
+        top = t.dataset.rgtop;
+        try { localStorage.setItem(TOP_KEY, top); } catch (err) { /* ignore */ }
+        W.renderLearnGrid();
+        return;
+      }
       var v = e.target.closest('[data-rgview]');
       if (v) {
         view = v.dataset.rgview;
@@ -260,8 +293,13 @@
     });
   }
 
-  /* Show the overview (RADICALS) or one 类. */
-  function open(key) {
+  /* Show the overview (RADICALS), one 类, or one 偏旁 (radical-table.js).
+     `which`: 'table' or 'tags', to open the overview at that part. */
+  function open(key, which) {
+    if (which === 'table' || which === 'tags') {
+      top = which;
+      try { localStorage.setItem(TOP_KEY, top); } catch (err) { /* ignore */ }
+    }
     W.learnState.group = key;
     W.learnState.query = '';
     var back = el('btn-learn-back');
@@ -308,12 +346,12 @@
   var pageRenderLearnGrid = W.renderLearnGrid;
   W.renderLearnGrid = function () {
     if (W.learnState.group === RADICALS) {
-      if (!sections().length) { // nothing left to show: back to the first grade
+      if (!anything()) { // nothing left to show: back to the first grade
         W.learnState.group = 'g1';
         W.populateGradeSeg();
       } else {
         el('char-grid').innerHTML = overviewHtml();
-        el('learn-count').textContent = sections().length + ' 类';
+        el('learn-count').textContent = showTable() ? RT().count() + ' 个偏旁' : sections().length + ' 类';
         update();
         return;
       }
@@ -417,7 +455,7 @@
     W.renderCustomGroupChips();
     if (typeof W.updatePoolCount === 'function') W.updatePoolCount();
     if (W.AddChars) W.AddChars.refresh();
-    open(sections().length ? RADICALS : 'g1');
+    open(anything() ? RADICALS : 'g1', 'tags');
     W.queueSave();
   }
 
